@@ -1,5 +1,5 @@
 {
-  "name": "payum/sofort",
+  "name": "payum/sofort-fork",
   "type": "library",
   "description": "The Payum extension. It provides Sofort payment integration.",
   "keywords": ["payment", "sofort", "sofortueberweisung"],
