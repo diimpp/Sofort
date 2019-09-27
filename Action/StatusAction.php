@@ -21,6 +21,12 @@ class StatusAction implements ActionInterface
 
         $details = ArrayObject::ensureArrayObject($request->getModel());
 
+        if (isset($details['CANCELLED'])) {
+            $request->markCanceled();
+
+            return;
+        }
+
         if (!isset($details['status'])
            && isset($details['transaction_id'])
            && isset($details['expires'])

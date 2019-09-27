@@ -2,6 +2,8 @@
 
 namespace Payum\Sofort\Action;
 
+use League\Uri\Http as HttpUri;
+use League\Uri\Modifiers\MergeQuery;
 use Payum\Core\Action\ActionInterface;
 use Payum\Core\GatewayAwareInterface;
 use Payum\Core\GatewayAwareTrait;
@@ -10,6 +12,7 @@ use Payum\Sofort\Request\Api\CreateTransaction;
 use Payum\Core\Bridge\Spl\ArrayObject;
 use Payum\Core\Exception\RequestNotSupportedException;
 use Payum\Core\Request\Capture;
+use Payum\Core\Request\GetHttpRequest;
 use Payum\Core\Request\Sync;
 use Payum\Core\Security\GenericTokenFactoryAwareInterface;
 
@@ -17,7 +20,7 @@ class CaptureAction implements ActionInterface, GatewayAwareInterface, GenericTo
 {
     use GatewayAwareTrait;
     use GenericTokenFactoryAwareTrait;
-    
+
     /**
      * {@inheritdoc}
      *
@@ -30,12 +33,20 @@ class CaptureAction implements ActionInterface, GatewayAwareInterface, GenericTo
 
         $details = ArrayObject::ensureArrayObject($request->getModel());
 
+        $this->gateway->execute($httpRequest = new GetHttpRequest());
+        if (isset($httpRequest->query['cancelled'])) {
+            $details['CANCELLED'] = true;
+            $this->gateway->execute(new Sync($details));
+
+            return;
+        }
+
         if (false == $details['transaction_id']) {
             if (false == $details['success_url'] && $request->getToken()) {
                 $details['success_url'] = $request->getToken()->getTargetUrl();
             }
             if (false == $details['abort_url'] && $request->getToken()) {
-                $details['abort_url'] = $request->getToken()->getTargetUrl();
+                $details['abort_url'] = $this->generateCancelUrl($request->getToken()->getTargetUrl());
             }
 
             if (false == $details['notification_url'] && $request->getToken() && $this->tokenFactory) {
@@ -51,6 +62,15 @@ class CaptureAction implements ActionInterface, GatewayAwareInterface, GenericTo
         }
 
         $this->gateway->execute(new Sync($details));
+    }
+
+    protected function generateCancelUrl(string $url): string
+    {
+        $cancelUrl = HttpUri::createFromString($url);
+        $modifier = new MergeQuery('cancelled=1');
+        $cancelUrl = $modifier->process($cancelUrl);
+
+        return (string)$cancelUrl;
     }
 
     /**
