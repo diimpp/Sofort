@@ -43,10 +43,6 @@ class CreateTransactionAction implements ActionInterface, ApiAwareInterface
 
         $details->validateNotEmpty(['amount', 'currency_code', 'reason', 'success_url', 'notification_url']);
 
-        $details['success_url'] = str_replace('localhost', 'api.dev.firusas.com', $details['success_url']);
-        $details['abort_url'] = str_replace('localhost', 'api.dev.firusas.com', $details['abort_url']);
-        $details['notification_url'] = str_replace('localhost', 'api.dev.firusas.com', $details['notification_url']);
-
         $details->replace($this->api->createTransaction((array) $details));
 
         if ($cancelled) {
