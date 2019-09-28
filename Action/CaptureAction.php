@@ -8,13 +8,15 @@ use Payum\Core\Action\ActionInterface;
 use Payum\Core\GatewayAwareInterface;
 use Payum\Core\GatewayAwareTrait;
 use Payum\Core\Security\GenericTokenFactoryAwareTrait;
-use Payum\Sofort\Request\Api\CreateTransaction;
 use Payum\Core\Bridge\Spl\ArrayObject;
 use Payum\Core\Exception\RequestNotSupportedException;
+use Payum\Core\Reply\HttpRedirect;
 use Payum\Core\Request\Capture;
 use Payum\Core\Request\GetHttpRequest;
+use Payum\Core\Request\GetHumanStatus;
 use Payum\Core\Request\Sync;
 use Payum\Core\Security\GenericTokenFactoryAwareInterface;
+use Payum\Sofort\Request\Api\CreateTransaction;
 
 class CaptureAction implements ActionInterface, GatewayAwareInterface, GenericTokenFactoryAwareInterface
 {
@@ -59,6 +61,14 @@ class CaptureAction implements ActionInterface, GatewayAwareInterface, GenericTo
             }
 
             $this->gateway->execute(new CreateTransaction($details));
+        } else {
+            $detailsClone = clone $details;
+            $this->gateway->execute(new Sync($detailsClone));
+            $this->gateway->execute($status = new GetHumanStatus($detailsClone));
+
+            if ($status->isUnknown() && $details['payment_url']) {
+                throw new HttpRedirect($details['payment_url']);
+            }
         }
 
         $this->gateway->execute(new Sync($details));
